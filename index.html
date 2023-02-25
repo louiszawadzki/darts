@@ -15,9 +15,7 @@
     </div>
     <div class="section" id="scores">
         <table>
-            <thead>
-                <th id="scores-names">
-                </th>
+            <thead id="scores-names">
             </thead>
             <tbody>
                 <tr class="score__hits" targetValue="15">
@@ -210,8 +208,8 @@
         }
 
         const updateScoresUI = () => {
-            playersNameHeader.innerHTML = `<td>Joueurs</td>${players.map(player => {
-                return `<td>${player}</td>`
+            playersNameHeader.innerHTML = `<th>Joueurs</th>${players.map(player => {
+                return `<th>${player}</th>`
             }).join("")}`
 
             const hitsByPlayer = UIState.scores.hits
@@ -270,9 +268,19 @@
             display: flex;
             flex-direction: column;
         }
+        input {
+            font-size: 20px;
+        }
         button {
-            padding: 10px;
-            margin: 5px;
+            padding: 15px;
+            margin: 10px;
+            font-size: 20px;
+        }
+        td {
+            font-size: 30px;
+        }
+        th {
+            font-size: 20px;
         }
         .points-choice::after {
             content: attr(hits);
