@@ -143,6 +143,7 @@
 
         nextTurnButton.onclick = () => {
             turnsHistory.push({turn: {...currentTurn}, playerName: players[UIState.currentPlayerIndex]})
+            resetTurn()
             if (UIState.currentPlayerIndex === players.length - 1) {
                 UIState = {
                     section: "scores",
@@ -153,7 +154,6 @@
                 return;
             }
             UIState.currentPlayerIndex++
-            resetTurn()
             updateTurnUI()
         }
 
