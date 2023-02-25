@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fléchettes</title>
+</head>
+<body>
+    <div class="section" id="players">
+        <ol id="players-list"></ol>
+        <input type="text" id="player-name" />
+        <button id="add-player">Ajouter</button>
+        <button id="start">Démarrer</button>
+    </div>
+    <div class="section" id="scores">
+        <table>
+            <thead>
+                <th id="scores-names">
+                </th>
+            </thead>
+            <tbody>
+                <tr class="score__hits" targetValue="15">
+                </tr>
+                <tr class="score__hits" targetValue="16">
+                </tr>
+                <tr class="score__hits" targetValue="17">
+                </tr>
+                <tr class="score__hits" targetValue="18">
+                </tr>
+                <tr class="score__hits" targetValue="19">
+                </tr>
+                <tr class="score__hits" targetValue="20">
+                </tr>
+                <tr class="score__hits" targetValue="B">
+                </tr>
+                <tr id="score-totals">
+                </tr>
+            </tbody>
+        </table>
+        <button id="next-scores">Next</button>
+    </div>
+    <div class="section" id="turn">
+        <h2 id="player-turn"></h2>
+        <button class="points-choice" hits=" 0">15</button>
+        <button class="points-choice" hits=" 0">16</button>
+        <button class="points-choice" hits=" 0">17</button>
+        <button class="points-choice" hits=" 0">18</button>
+        <button class="points-choice" hits=" 0">19</button>
+        <button class="points-choice" hits=" 0">20</button>
+        <button class="points-choice" hits=" 0">B</button>
+        <button id="next-turn">Next</button>
+        <button id="reset-turn">Reset</button>
+    </div>
+    <script>
+        /**
+         * State
+         **/
+        const players = [] // string[]
+        const turnsHistory = [] // {playerName, hits}[]
+        const targets = ["15", "16", "17", "18", "19", "20", "B"]
+        const targetScores = {
+            "15": 15,
+            "16": 16,
+            "17": 17,
+            "18": 18,
+            "19": 19,
+            "20": 20,
+            "B": 25,
+        }
+
+        const getScoresAndHitsFromTurnsHistory = () => {
+            const scores = {}
+            const hits = {}
+            players.forEach(player => {
+                scores[player] = 0
+                hits[player] = {}
+                targets.forEach(region => {
+                    hits[player][region] = 0
+                })
+            })
+
+            turnsHistory.forEach(({playerName, turn}) => {
+                Object.entries(turn).forEach(([target, count]) => {
+                    if (count === 0) {
+                        return;
+                    }
+                    const previousHitCount = hits[playerName][target];
+                    const scoringHits = Math.max(previousHitCount - 3 + count, 0);
+                    hits[playerName][target] += count;
+
+                    if (scoringHits === 0) {
+                        return;
+                    }
+                    players.forEach(player => {
+                        if (player === playerName) {
+                            return;
+                        }
+                        if (hits[player][target] < 3) {
+                            scores[player] += scoringHits * targetScores[target]
+                        }
+                    })
+                })
+            })
+
+            return {scores, hits}
+        }
+
+        /**
+         * Players selection
+         **/ 
+        const playersSection = document.getElementById("players")
+        const addPlayer = document.getElementById("add-player")
+        const input = document.getElementById("player-name")
+        const start = document.getElementById("start")
+        const playersList = document.getElementById("players-list")
+
+        const updatePlayersList = () => {
+            playersList.innerHTML = players.map(name => `<li class="player">${name}</li>`).join("")
+        }
+
+        addPlayer.onclick = () => {
+            const playerName = input.value
+            players.push(playerName)
+            updatePlayersList()
+            input.value = ""
+        }
+
+        start.onclick = () => {
+            UIState = {
+                section: "turn",
+                currentPlayerIndex: 0
+            }
+            updateUI()
+            updateTurnUI()
+        }
+
+        /**
+         * Turns
+         **/
+        const turnSection = document.getElementById("turn")
+        const nextTurnButton = document.getElementById("next-turn")
+        const resetTurnButton = document.getElementById("reset-turn")
+        const playerNameH2 = document.getElementById("player-turn")
+
+        nextTurnButton.onclick = () => {
+            turnsHistory.push({turn: {...currentTurn}, playerName: players[UIState.currentPlayerIndex]})
+            if (UIState.currentPlayerIndex === players.length - 1) {
+                UIState = {
+                    section: "scores",
+                    scores: getScoresAndHitsFromTurnsHistory(),
+                }
+                updateScoresUI()
+                updateUI()
+                return;
+            }
+            UIState.currentPlayerIndex++
+            resetTurn()
+            updateTurnUI()
+        }
+
+        const currentTurn = {}
+        const resetTurn = () => {
+            targets.forEach(target => {
+                currentTurn[target] = 0
+            })
+        }
+        resetTurn();
+
+        resetTurnButton.onclick = () => {
+            resetTurn()
+            updateTurnUI()
+        }
+
+        const pointsChoice = document.getElementsByClassName("points-choice");
+        for(let i=0; i<pointsChoice.length; i++) {
+            const choice = pointsChoice[i]
+            const target = choice.innerText
+            choice.onclick = () => {
+                currentTurn[target]++
+                updateTurnUI()
+            }
+        }
+
+        const updateTurnUI = () => {
+            Object.values(currentTurn).forEach((hits, index) => {
+                // Make more robust?
+                const htmlTarget = pointsChoice[index]
+                htmlTarget.attributes[1].value = ` ${hits}`
+            })
+            playerNameH2.innerText = players[UIState.currentPlayerIndex]
+        }
+
+        /**
+         * Scores
+         **/
+        const scoresSection = document.getElementById("scores")
+        const playersNameHeader = document.getElementById("scores-names")
+        const hitsScoreRows = document.getElementsByClassName("score__hits")
+        const totalsRow = document.getElementById("score-totals")
+        const nextScores = document.getElementById("next-scores")
+
+        const renderHits = (hitsCount) => {
+            switch(hitsCount) {
+                case 0: return "O"
+                case 1: return "/"
+                case 2: return "X"
+                default: return "⛒"
+            }
+        }
+
+        const updateScoresUI = () => {
+            playersNameHeader.innerHTML = `<td>Joueurs</td>${players.map(player => {
+                return `<td>${player}</td>`
+            }).join("")}`
+
+            const hitsByPlayer = UIState.scores.hits
+            const scoresByPlayer = UIState.scores.scores
+
+            for(let i=0; i<hitsScoreRows.length; i++) {
+                const hitsRow = hitsScoreRows[i]
+                const targetValue = hitsRow.attributes.targetValue.nodeValue
+                hitsRow.innerHTML = `<td>${targetValue}</td>${
+                    players.map(player => `<td>${renderHits(hitsByPlayer[player][targetValue])}</td>`).join("")
+                }`
+
+            }
+
+            totalsRow.innerHTML = `<td>Total</td>${players.map(player => `<td>${scoresByPlayer[player]}</td>`).join("")}`
+        }
+
+        nextScores.onclick = () => {
+            UIState = {
+                section: "turn",
+                currentPlayerIndex: 0
+            }
+            updateTurnUI()
+            updateUI()
+        }
+
+        /**
+         * Utils
+         **/
+        let UIState = {
+            section: "players",
+        }
+
+        const sections = {
+            players: playersSection,
+            turn: turnSection,
+            scores: scoresSection,
+        }
+
+        const updateUI = () => {
+            Object.values(sections).forEach(sec => {
+                sec.classList = "section"
+            });
+            sections[UIState.section].classList = "section section--visible"
+        }
+
+        updateUI()
+    </script>
+    <style>
+        .section {
+            height: 100vh;
+            width: 100vw;
+            display: none;
+        }
+        .section--visible {
+            display: flex;
+            flex-direction: column;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+        }
+        .points-choice::after {
+            content: attr(hits);
+        }
+    </style>
+</body>
+</html>
